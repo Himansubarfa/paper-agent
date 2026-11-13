@@ -169,16 +169,19 @@ def test_handle_generate_slides_returns_agent_response(dispatcher_and_cache, sam
     assert len(session.history) == 2
 
 
-def test_handle_viva_practice_returns_stub_response(dispatcher_and_cache, sample_doc: ParsedDocument) -> None:
-    """Verify handle() with intent=viva_practice hits the Phase 6 stub."""
+def test_handle_viva_practice_returns_agent_response(dispatcher_and_cache, sample_doc: ParsedDocument) -> None:
+    """Verify handle() with intent=viva_practice executes VivaSession and VivaAgent."""
     dispatcher, fake_llm = dispatcher_and_cache
     session = SessionState(doc=sample_doc)
+
+    from tests.test_viva import make_mock_qset
+    fake_llm.custom_response = lambda schema, input_val: make_mock_qset(tier="recall", n=1)
 
     response = dispatcher.handle(session, "Quiz me on this paper.", ui_selected="viva_practice")
 
     assert isinstance(response, AgentResponse)
     assert response.intent == "viva_practice"
-    assert "later phase" in response.message.lower()
+    assert "viva started" in response.message.lower()
     assert session.active_task == "viva_practice"
     assert len(session.history) == 2
 

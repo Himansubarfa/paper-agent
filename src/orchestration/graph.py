@@ -8,13 +8,15 @@ from src.agents.concept_extractor import ConceptExtractorAgent
 from src.agents.qa_agent import QAAgent
 from src.agents.slide_generator import SlideGeneratorAgent
 from src.agents.summarizer import SummarizerAgent
+from src.agents.viva_agent import VivaAgent
+from src.agents.viva_session import VivaSession
 from src.cache import OutputCache
 from src.config import Settings
 from src.errors import AgentError
 from src.logging_setup import get_logger
 from src.models.schemas import Intent
 from src.orchestration.router import HybridRouter
-from src.orchestration.session import SessionState, trimmed_history
+from src.orchestration.session import SessionState, VivaState, trimmed_history
 from src.vectorstore.chroma_store import PaperStore
 
 logger = get_logger(__name__)
@@ -51,6 +53,7 @@ class Dispatcher:
         self.concept_extractor = concept_extractor or ConceptExtractorAgent(llm=llm, store=store, cache=cache)
         self.qa_agent = qa_agent or QAAgent(llm=llm, store=store)
         self.slide_generator = SlideGeneratorAgent(llm=llm, cache=cache)
+        self.viva_agent = VivaAgent(llm=llm, store=store, cache=cache)
 
     def handle(
         self,
@@ -132,7 +135,50 @@ class Dispatcher:
                     message=f"Generated {len(deck.slides)}-slide deck.",
                 )
             elif intent == "viva_practice":
-                raise NotImplementedError("Viva practice will be implemented in Phase 6.")
+                if session.viva_state in (VivaState.IDLE, VivaState.FINISHED):
+                    vs = VivaSession(self.viva_agent, session)
+                    first_q = vs.start()
+                    response = AgentResponse(
+                        intent="viva_practice",
+                        payload=first_q,
+                        message=f"Viva started. Question 1: {first_q.question}",
+                    )
+                elif session.viva_state == VivaState.AWAITING_ANSWER:
+                    vs = VivaSession(self.viva_agent, session)
+                    eval_result = vs.submit_answer(message)
+                    if session.viva_state == VivaState.FINISHED:
+                        report = vs.finish() if session.viva_report is None else session.viva_report
+                        response = AgentResponse(
+                            intent="viva_practice",
+                            payload=report,
+                            message=f"Viva complete. Overall score: {report.overall_score}/100.",
+                        )
+                    else:
+                        response = AgentResponse(
+                            intent="viva_practice",
+                            payload=eval_result,
+                            message=f"Score: {eval_result.scores.correctness}/5 correctness. {eval_result.feedback}",
+                        )
+                elif session.viva_state == VivaState.AWAITING_FOLLOWUP:
+                    vs = VivaSession(self.viva_agent, session)
+                    eval_result = vs.submit_followup(message)
+                    if session.viva_state == VivaState.FINISHED:
+                        report = vs.finish() if session.viva_report is None else session.viva_report
+                        response = AgentResponse(
+                            intent="viva_practice",
+                            payload=report,
+                            message=f"Viva complete. Overall score: {report.overall_score}/100.",
+                        )
+                    else:
+                        next_q = vs.next_question()
+                        q_text = f" Next question: {next_q.question}" if next_q else ""
+                        response = AgentResponse(
+                            intent="viva_practice",
+                            payload=eval_result,
+                            message=f"Score: {eval_result.scores.correctness}/5 correctness. {eval_result.feedback}{q_text}",
+                        )
+                else:
+                    raise AgentError(f"Unexpected viva state in dispatcher: {session.viva_state}")
             else:
                 raise NotImplementedError(f"Unsupported intent: {intent}")
         except NotImplementedError:
