@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, get_args, get_origin
 import typing
 import pytest
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import PydanticUndefined
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -130,6 +130,8 @@ class SchemaAwareFakeChatModel(BaseChatModel):
 
     model_config = ConfigDict(extra="allow")
     target_schema: Any = None
+    calls: list[Any] = Field(default_factory=list)
+    custom_response: Any = None
 
     @property
     def _llm_type(self) -> str:
@@ -142,7 +144,11 @@ class SchemaAwareFakeChatModel(BaseChatModel):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
-        if self.target_schema:
+        self.calls.append({"type": "generate", "messages": messages})
+        if self.custom_response:
+            resp = self.custom_response
+            content = resp.model_dump_json() if isinstance(resp, BaseModel) else str(resp)
+        elif self.target_schema:
             instance = generate_fake_instance(self.target_schema)
             content = instance.model_dump_json()
         else:
@@ -153,6 +159,11 @@ class SchemaAwareFakeChatModel(BaseChatModel):
 
     def with_structured_output(self, schema: type[BaseModel] | Any, **kwargs: Any) -> Any:
         def _invoke(input_val: Any) -> Any:
+            self.calls.append({"type": "structured", "schema": schema, "input": input_val})
+            if callable(self.custom_response):
+                return self.custom_response(schema, input_val)
+            if self.custom_response is not None:
+                return self.custom_response
             return generate_fake_instance(schema)
         return RunnableLambda(_invoke)
 
