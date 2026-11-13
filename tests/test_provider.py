@@ -98,6 +98,7 @@ def test_get_llm_groq(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setenv("LLM_PROVIDER", "groq")
     monkeypatch.setenv("GROQ_API_KEY", "gsk-mock-key")
+    monkeypatch.setenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     get_settings.cache_clear()
 
     llm = get_llm()
@@ -110,7 +111,7 @@ def test_check_provider_groq_invalid_key(monkeypatch: pytest.MonkeyPatch) -> Non
     class MockResponse:
         status_code = 401
 
-    monkeypatch.setattr("requests.head", lambda *args, **kwargs: MockResponse())
+    monkeypatch.setattr("requests.get", lambda *args, **kwargs: MockResponse())
 
     settings = Settings(llm_provider="groq", groq_api_key="invalid-key")
     ok, msg = check_provider(settings)
@@ -123,7 +124,7 @@ def test_check_provider_groq_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     class MockResponse:
         status_code = 200
 
-    monkeypatch.setattr("requests.head", lambda *args, **kwargs: MockResponse())
+    monkeypatch.setattr("requests.get", lambda *args, **kwargs: MockResponse())
 
     settings = Settings(llm_provider="groq", groq_api_key="valid-key")
     ok, msg = check_provider(settings)

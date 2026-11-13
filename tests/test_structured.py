@@ -80,3 +80,58 @@ def test_run_structured_exhausted_retries_raises_agent_error(
         )
 
     assert "Failed to produce valid structured output" in str(exc_info.value)
+
+
+def test_run_structured_groq_uses_json_schema_mode():
+    """Verify ChatGroq instances use method='json_schema'."""
+    from langchain_groq import ChatGroq
+    from unittest.mock import MagicMock
+    from langchain_core.runnables import Runnable
+    from src.llm.structured import run_structured
+    from src.models.schemas import SectionSummary
+    from langchain_core.prompts import ChatPromptTemplate
+
+    # Create a mock ChatGroq instance
+    mock_llm = MagicMock(spec=ChatGroq)
+    mock_structured_llm = MagicMock(spec=Runnable)
+    mock_llm.with_structured_output.return_value = mock_structured_llm
+
+    # Set up what the structured llm returns
+    expected = SectionSummary(section="Intro", summary="S", key_points=["k1"])
+    mock_structured_llm.invoke.return_value = expected
+
+    prompt = ChatPromptTemplate.from_messages([("human", "{text}")])
+    
+    # Call it
+    result = run_structured({"text": "input"}, prompt, SectionSummary, mock_llm)
+
+    # Assert method='json_schema' was passed
+    mock_llm.with_structured_output.assert_called_once_with(
+        SectionSummary, method="json_schema"
+    )
+    assert result == expected
+
+
+def test_run_structured_non_groq_uses_default_mode():
+    """Verify non-ChatGroq instances use default with_structured_output."""
+    from unittest.mock import MagicMock
+    from langchain_core.runnables import Runnable
+    from langchain_core.language_models.chat_models import BaseChatModel
+    from src.llm.structured import run_structured
+    from src.models.schemas import SectionSummary
+    from langchain_core.prompts import ChatPromptTemplate
+
+    mock_llm = MagicMock(spec=BaseChatModel)
+    mock_structured_llm = MagicMock(spec=Runnable)
+    mock_llm.with_structured_output.return_value = mock_structured_llm
+
+    expected = SectionSummary(section="Intro", summary="S", key_points=["k1"])
+    mock_structured_llm.invoke.return_value = expected
+
+    prompt = ChatPromptTemplate.from_messages([("human", "{text}")])
+    result = run_structured({"text": "input"}, prompt, SectionSummary, mock_llm)
+
+    # Assert method="json_schema" was NOT passed
+    mock_llm.with_structured_output.assert_called_once_with(SectionSummary)
+    assert result == expected
+

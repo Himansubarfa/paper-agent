@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_groq import ChatGroq
 
 from src.errors import AgentError
 from src.logging_setup import get_logger
@@ -54,7 +55,10 @@ def run_structured(
 
     # Step 1: Attempt direct with_structured_output
     try:
-        structured_llm = llm.with_structured_output(schema)
+        if isinstance(llm, ChatGroq):
+            structured_llm = llm.with_structured_output(schema, method="json_schema")
+        else:
+            structured_llm = llm.with_structured_output(schema)
         chain = prompt | structured_llm
         result = chain.invoke(chain_input)
         if isinstance(result, schema):

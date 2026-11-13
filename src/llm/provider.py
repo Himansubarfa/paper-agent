@@ -121,7 +121,7 @@ def check_provider(settings: Optional[Settings] = None) -> tuple[bool, str]:
         api_key = settings.groq_api_key.get_secret_value() if settings.groq_api_key else ""
         headers = {"Authorization": f"Bearer {api_key}"}
         try:
-            resp = requests.head("https://api.groq.com/openai/v1/models", headers=headers, timeout=3)
+            resp = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=3)
             if resp.status_code == 200:
                 return (True, "")
             elif resp.status_code in (401, 403):

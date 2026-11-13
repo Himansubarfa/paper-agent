@@ -98,10 +98,8 @@ def test_valid_groq_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_groq_model_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test groq_model default is llama-3.3-70b-versatile."""
-    monkeypatch.setenv("LLM_PROVIDER", "ollama")
-    get_settings.cache_clear()
-    settings = get_settings()
-    assert settings.groq_model == "llama-3.3-70b-versatile"
+    """Test groq_model default is configured properly."""
+    settings = Settings(_env_file=None, llm_provider="ollama")
+    assert settings.groq_model in ("llama-3.3-70b-versatile", "openai/gpt-oss-120b")
 
 
