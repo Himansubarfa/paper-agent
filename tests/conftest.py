@@ -288,3 +288,57 @@ def sample_pdf() -> bytes:
     """Fixture returning sample PDF bytes."""
     return sample_pdf_bytes()
 
+
+@pytest.fixture
+def fake_store() -> Any:
+    """Fixture providing a mock PaperStore returning sample chunks."""
+    from src.models.schemas import Chunk
+
+    class FakePaperStore:
+        def __init__(self) -> None:
+            self.chunks = [
+                Chunk(
+                    id="p1-c1",
+                    text="Transformers utilize multi-head self-attention mechanisms to capture dependencies.",
+                    page=1,
+                    section_id="s1",
+                    section_heading="Introduction",
+                ),
+                Chunk(
+                    id="p2-c1",
+                    text="We evaluate on WMT 2014 English-to-German and English-to-French translation benchmarks.",
+                    page=2,
+                    section_id="s2",
+                    section_heading="Experiments",
+                ),
+                Chunk(
+                    id="p3-c1",
+                    text="Our model achieves 28.4 BLEU score while reducing training time to 3.5 days.",
+                    page=3,
+                    section_id="s3",
+                    section_heading="Results",
+                ),
+            ]
+
+        def is_indexed(self) -> bool:
+            return True
+
+        def index(self, chunks: list[Chunk]) -> None:
+            pass
+
+        def retrieve(
+            self,
+            query: str,
+            k: int | None = None,
+            section_id: str | None = None,
+        ) -> list[Chunk]:
+            res = self.chunks
+            if section_id:
+                res = [c for c in res if c.section_id == section_id]
+            top_k = k if k is not None else len(res)
+            return res[:top_k]
+
+    return FakePaperStore()
+
+
+
