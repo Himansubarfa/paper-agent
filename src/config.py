@@ -13,11 +13,13 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
     # ---- LLM ----
-    llm_provider: Literal["openai", "anthropic", "ollama"] = "ollama"
+    llm_provider: Literal["openai", "anthropic", "groq", "ollama"] = "ollama"
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-4o-mini"
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str | None = None
+    groq_api_key: SecretStr | None = None
+    groq_model: str = "llama-3.3-70b-versatile"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1:8b"
     llm_temperature: float = 0.2
@@ -68,6 +70,9 @@ class Settings(BaseSettings):
                 raise ConfigError("ANTHROPIC_API_KEY is required when llm_provider='anthropic'")
             if not self.anthropic_model or not self.anthropic_model.strip():
                 raise ConfigError("ANTHROPIC_MODEL is required when llm_provider='anthropic'")
+        elif self.llm_provider == "groq":
+            if not self.groq_api_key or not self.groq_api_key.get_secret_value().strip():
+                raise ConfigError("GROQ_API_KEY is required when llm_provider='groq'")
 
 
 @lru_cache()

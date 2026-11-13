@@ -90,3 +90,43 @@ def test_check_provider_cloud_providers() -> None:
     ok_a, msg_a = check_provider(s_anthropic)
     assert ok_a is True
     assert msg_a == ""
+
+
+def test_get_llm_groq(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test get_llm returns ChatGroq when llm_provider=groq."""
+    from langchain_groq import ChatGroq
+
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-mock-key")
+    get_settings.cache_clear()
+
+    llm = get_llm()
+    assert isinstance(llm, ChatGroq)
+    assert llm.model_name == "llama-3.3-70b-versatile"
+
+
+def test_check_provider_groq_invalid_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test check_provider returns (False, message) when groq key is invalid."""
+    class MockResponse:
+        status_code = 401
+
+    monkeypatch.setattr("requests.head", lambda *args, **kwargs: MockResponse())
+
+    settings = Settings(llm_provider="groq", groq_api_key="invalid-key")
+    ok, msg = check_provider(settings)
+    assert ok is False
+    assert "Check GROQ_API_KEY" in msg
+
+
+def test_check_provider_groq_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test check_provider returns (True, '') when groq status is 200."""
+    class MockResponse:
+        status_code = 200
+
+    monkeypatch.setattr("requests.head", lambda *args, **kwargs: MockResponse())
+
+    settings = Settings(llm_provider="groq", groq_api_key="valid-key")
+    ok, msg = check_provider(settings)
+    assert ok is True
+    assert msg == ""
+

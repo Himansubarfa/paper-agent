@@ -34,6 +34,15 @@ def get_llm(settings: Optional[Settings] = None) -> BaseChatModel:
             temperature=settings.llm_temperature,
             default_request_timeout=settings.llm_timeout_seconds,
         )
+    elif settings.llm_provider == "groq":
+        from langchain_groq import ChatGroq
+        api_key = settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
+        return ChatGroq(
+            model=settings.groq_model,
+            api_key=api_key,
+            temperature=settings.llm_temperature,
+            timeout=settings.llm_timeout_seconds,
+        )
     elif settings.llm_provider == "ollama":
         from langchain_ollama import ChatOllama
         return ChatOllama(
@@ -107,5 +116,19 @@ def check_provider(settings: Optional[Settings] = None) -> tuple[bool, str]:
             )
     elif settings.llm_provider in ("openai", "anthropic"):
         return (True, "")
+    elif settings.llm_provider == "groq":
+        import requests
+        api_key = settings.groq_api_key.get_secret_value() if settings.groq_api_key else ""
+        headers = {"Authorization": f"Bearer {api_key}"}
+        try:
+            resp = requests.head("https://api.groq.com/openai/v1/models", headers=headers, timeout=3)
+            if resp.status_code == 200:
+                return (True, "")
+            elif resp.status_code in (401, 403):
+                return (False, "Groq unreachable. Check GROQ_API_KEY.")
+            else:
+                return (False, f"Groq error: HTTP {resp.status_code}")
+        except Exception as exc:
+            return (False, f"Groq unreachable: {exc}")
     else:
         return (False, f"Unsupported LLM provider: {settings.llm_provider}")

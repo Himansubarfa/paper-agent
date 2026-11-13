@@ -76,3 +76,32 @@ def test_load_prompt_missing_raises_file_not_found() -> None:
         load_prompt("non_existent_prompt_template_xyz")
     assert "non_existent_prompt_template_xyz.yaml" in str(exc_info.value)
 
+
+def test_missing_groq_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test missing GROQ_API_KEY raises ConfigError when provider=groq."""
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "")
+    get_settings.cache_clear()
+    with pytest.raises(ConfigError, match="GROQ_API_KEY"):
+        get_settings()
+
+
+def test_valid_groq_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test valid groq configuration loads cleanly."""
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-mock-key")
+    get_settings.cache_clear()
+    settings = get_settings()
+    assert settings.llm_provider == "groq"
+    assert settings.groq_api_key is not None
+    assert settings.groq_api_key.get_secret_value() == "gsk-mock-key"
+
+
+def test_groq_model_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test groq_model default is llama-3.3-70b-versatile."""
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    get_settings.cache_clear()
+    settings = get_settings()
+    assert settings.groq_model == "llama-3.3-70b-versatile"
+
+
