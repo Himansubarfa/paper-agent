@@ -1,0 +1,78 @@
+"""Tests for application configuration."""
+
+import pytest
+from src.config import Settings, get_settings
+from src.errors import ConfigError
+
+
+def test_valid_ollama_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test valid ollama configuration loads without error."""
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    get_settings.cache_clear()
+    settings = get_settings()
+    assert settings.llm_provider == "ollama"
+    assert settings.ollama_base_url == "http://localhost:11434"
+
+
+def test_missing_openai_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test missing OPENAI_API_KEY raises ConfigError when provider=openai."""
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    get_settings.cache_clear()
+    with pytest.raises(ConfigError, match="OPENAI_API_KEY"):
+        get_settings()
+
+
+def test_missing_anthropic_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test missing ANTHROPIC_API_KEY raises ConfigError when provider=anthropic."""
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "claude-3-5-sonnet")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    get_settings.cache_clear()
+    with pytest.raises(ConfigError, match="ANTHROPIC_API_KEY"):
+        get_settings()
+
+
+def test_missing_anthropic_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test missing ANTHROPIC_MODEL raises ConfigError when provider=anthropic."""
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "dummy-key")
+    monkeypatch.delenv("ANTHROPIC_MODEL", raising=False)
+    get_settings.cache_clear()
+    with pytest.raises(ConfigError, match="ANTHROPIC_MODEL"):
+        get_settings()
+
+
+def test_ollama_provider_with_no_keys_loads_cleanly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test ollama provider with no keys set loads cleanly."""
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    get_settings.cache_clear()
+    settings = Settings(llm_provider="ollama")
+    assert settings.llm_provider == "ollama"
+    assert settings.openai_api_key is None
+    assert settings.anthropic_api_key is None
+
+
+def test_defaults_match_section_6_1(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spot-check 5 default field values against Section 6.1."""
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    get_settings.cache_clear()
+    settings = get_settings()
+    assert settings.llm_temperature == 0.2
+    assert settings.llm_timeout_seconds == 120
+    assert settings.retrieval_top_k == 6
+    assert settings.chunk_size == 1500
+    assert settings.max_upload_mb == 25
+
+
+def test_load_prompt_missing_raises_file_not_found() -> None:
+    """Test load_prompt raises FileNotFoundError with the exact filepath."""
+    from src.prompts import load_prompt
+    with pytest.raises(FileNotFoundError) as exc_info:
+        load_prompt("non_existent_prompt_template_xyz")
+    assert "non_existent_prompt_template_xyz.yaml" in str(exc_info.value)
+
