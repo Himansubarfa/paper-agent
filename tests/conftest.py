@@ -195,3 +195,85 @@ def tmp_settings(tmp_path: Path) -> Settings:
         chroma_persist_dir=tmp_path / "data" / "vectorstore",
         cache_dir=tmp_path / "data" / "cache",
     )
+
+
+def sample_pdf_bytes() -> bytes:
+    """Generate a valid 4-page sample PDF using PyMuPDF (fitz) for offline testing."""
+    import pymupdf
+
+    doc = pymupdf.open()
+
+    # Page 1: Title & Abstract
+    p1 = doc.new_page()
+    p1.insert_text((50, 50), "Agentic Retrieval Systems for Scientific Literature", fontsize=16)
+    p1.insert_text((50, 90), "Abstract", fontsize=14)
+    p1.insert_text(
+        (50, 120),
+        "This paper introduces a modular architecture for intelligent scientific document processing.\n"
+        "We propose an end-to-end framework integrating multi-stage ingestion, semantic chunking, and\n"
+        "vector verification to eliminate common synthesis errors and hallucinations.\n\n"
+        "Extensive empirical experiments demonstrate superior contextual grounding and query recall.\n"
+        "Our methods provide robust provenance guarantees across complex academic corpora.",
+        fontsize=10,
+    )
+
+    # Page 2: Introduction
+    p2 = doc.new_page()
+    p2.insert_text((50, 50), "Introduction", fontsize=14)
+    p2.insert_text(
+        (50, 80),
+        "Rapid growth in research publication volume presents substantial challenges for literature review.\n"
+        "Researchers face cognitive overload when navigating lengthy cross-disciplinary articles.\n"
+        "Automated reading assistants must accurately retain section hierarchy and semantic nuance.\n\n"
+        "In this work, we formalize the document ingestion problem into discrete, verifiable phases.\n"
+        "We outline our architectural commitments, design goals, and threat model in the following sections.",
+        fontsize=10,
+    )
+
+    # Page 3: Method
+    p3 = doc.new_page()
+    p3.insert_text((50, 50), "Method", fontsize=14)
+    p3.insert_text(
+        (50, 80),
+        "Our methodology operates over parsed markdown representations extracted from PDF page streams.\n"
+        "We detect structural headings using a multi-strategy hierarchy that handles various formats.\n"
+        "Each section is split using bounded recursive character chunking without crossing boundaries.\n\n"
+        "Vectors are indexed into a local Chroma store using Maximal Marginal Relevance search.\n"
+        "This preserves maximal diversity while maintaining stringent semantic alignment to the user query.",
+        fontsize=10,
+    )
+
+    # Page 4: Results, Conclusion, References
+    p4 = doc.new_page()
+    p4.insert_text((50, 50), "Results", fontsize=14)
+    p4.insert_text(
+        (50, 75),
+        "We benchmarked the architecture across 500 peer-reviewed papers spanning multiple domains.\n"
+        "Our system achieved a 94.2% factual consistency score, outperforming naive chunking baselines.",
+        fontsize=10,
+    )
+    p4.insert_text((50, 160), "Conclusion", fontsize=14)
+    p4.insert_text(
+        (50, 185),
+        "We presented a reliable, structured approach for processing complex academic documents.\n"
+        "Future work will explore multi-modal table extraction and real-time collaborative verification.",
+        fontsize=10,
+    )
+    p4.insert_text((50, 270), "References", fontsize=14)
+    p4.insert_text(
+        (50, 295),
+        "1. Vaswani, A., et al. Attention Is All You Need. NeurIPS 2017.\n"
+        "2. Lewis, P., et al. Retrieval-Augmented Generation. NeurIPS 2020.",
+        fontsize=10,
+    )
+
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+@pytest.fixture
+def sample_pdf() -> bytes:
+    """Fixture returning sample PDF bytes."""
+    return sample_pdf_bytes()
+
