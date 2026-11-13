@@ -72,7 +72,7 @@ SlideLayout = Literal["title", "content", "two_column", "results", "closing"]
 
 class Slide(BaseModel):
     title: str
-    bullets: list[str] = Field(max_length=5)
+    bullets: list[str] = Field(default_factory=list, max_length=5)
     speaker_notes: str = ""
     layout_hint: SlideLayout = "content"
     right_bullets: list[str] = []     # only for two_column

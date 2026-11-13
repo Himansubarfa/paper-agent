@@ -6,6 +6,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from src.agents.concept_extractor import ConceptExtractorAgent
 from src.agents.qa_agent import QAAgent
+from src.agents.slide_generator import SlideGeneratorAgent
 from src.agents.summarizer import SummarizerAgent
 from src.cache import OutputCache
 from src.config import Settings
@@ -49,6 +50,7 @@ class Dispatcher:
         self.summarizer = summarizer or SummarizerAgent(llm=llm, cache=cache, settings=settings)
         self.concept_extractor = concept_extractor or ConceptExtractorAgent(llm=llm, store=store, cache=cache)
         self.qa_agent = qa_agent or QAAgent(llm=llm, store=store)
+        self.slide_generator = SlideGeneratorAgent(llm=llm, cache=cache)
 
     def handle(
         self,
@@ -111,7 +113,24 @@ class Dispatcher:
                     message=qa_answer.answer,
                 )
             elif intent == "generate_slides":
-                raise NotImplementedError("Slide generation will be implemented in Phase 5.")
+                if session.doc is None:
+                    raise AgentError("No document loaded in session. Please upload a PDF first.")
+                if session.summary is None:
+                    session.summary = self.summarizer.run(session.doc)
+                if session.concepts is None:
+                    session.concepts = self.concept_extractor.run(session.doc)
+                deck = self.slide_generator.run(
+                    summary=session.summary,
+                    concepts=session.concepts,
+                    min_slides=self.settings.min_slides,
+                    max_slides=self.settings.max_slides,
+                )
+                session.deck = deck
+                response = AgentResponse(
+                    intent=intent,
+                    payload=deck,
+                    message=f"Generated {len(deck.slides)}-slide deck.",
+                )
             elif intent == "viva_practice":
                 raise NotImplementedError("Viva practice will be implemented in Phase 6.")
             else:

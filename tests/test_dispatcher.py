@@ -145,16 +145,26 @@ def test_handle_explain_concept_returns_agent_response(dispatcher_and_cache, sam
     assert len(session.history) == 2
 
 
-def test_handle_generate_slides_returns_stub_response(dispatcher_and_cache, sample_doc: ParsedDocument) -> None:
-    """Verify handle() with intent=generate_slides hits the Phase 5 stub."""
+def test_handle_generate_slides_returns_agent_response(dispatcher_and_cache, sample_doc: ParsedDocument) -> None:
+    """Verify handle() with intent=generate_slides executes SlideGeneratorAgent."""
     dispatcher, fake_llm = dispatcher_and_cache
     session = SessionState(doc=sample_doc)
+
+    from tests.test_slides import make_valid_deck
+    from tests.conftest import generate_fake_instance
+
+    def _resp(schema, input_val):
+        if getattr(schema, "__name__", "") == "SlideDeck":
+            return make_valid_deck(8)
+        return generate_fake_instance(schema)
+
+    fake_llm.custom_response = _resp
 
     response = dispatcher.handle(session, "Generate ppt slides from the paper.", ui_selected="generate_slides")
 
     assert isinstance(response, AgentResponse)
     assert response.intent == "generate_slides"
-    assert "later phase" in response.message.lower()
+    assert "generated" in response.message.lower()
     assert session.active_task == "generate_slides"
     assert len(session.history) == 2
 

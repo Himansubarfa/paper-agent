@@ -161,3 +161,20 @@ def test_slide_deck_pydantic_validation() -> None:
             title="Slide Overflow",
             bullets=["b1", "b2", "b3", "b4", "b5", "b6"],
         )
+
+
+def test_slide_empty_bullets_ok():
+    from src.models.schemas import Slide
+
+    s = Slide(title="Title", layout_hint="title")
+    assert s.bullets == []
+
+
+def test_slide_six_bullets_rejected():
+    import pytest
+    from pydantic import ValidationError
+    from src.models.schemas import Slide
+
+    with pytest.raises(ValidationError):
+        Slide(title="X", bullets=["a", "b", "c", "d", "e", "f"])
+
