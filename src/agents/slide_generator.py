@@ -118,6 +118,7 @@ class SlideGeneratorAgent:
         concepts: ConceptExtraction,
         min_slides: int = 8,
         max_slides: int = 15,
+        theme: str = "Minimalist Tech",
     ) -> SlideDeck:
         """Generate, validate, and cache a structured SlideDeck.
 
@@ -126,6 +127,7 @@ class SlideGeneratorAgent:
             concepts: Extracted key concepts and contributions.
             min_slides: Minimum allowed slides.
             max_slides: Maximum allowed slides.
+            theme: User-defined presentation aesthetic and tone.
 
         Returns:
             Validated SlideDeck instance.
@@ -142,6 +144,7 @@ class SlideGeneratorAgent:
                 "concepts": concepts.model_dump_json(indent=2),
                 "min_slides": min_slides,
                 "max_slides": max_slides,
+                "theme": theme,
             },
             prompt=self._prompt,
             schema=SlideDeck,

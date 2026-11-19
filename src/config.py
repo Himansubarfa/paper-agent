@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.errors import ConfigError
@@ -13,13 +13,15 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
     # ---- LLM ----
-    llm_provider: Literal["openai", "anthropic", "groq", "ollama"] = "ollama"
+    llm_provider: Literal["openai", "anthropic", "groq", "gemini", "ollama"] = "ollama"
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-4o-mini"
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str | None = None
     groq_api_key: SecretStr | None = None
     groq_model: str = "openai/gpt-oss-120b"
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-2.5-flash"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1:8b"
     llm_temperature: float = 0.2
@@ -55,6 +57,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @field_validator("openai_api_key", "anthropic_api_key", "groq_api_key", "gemini_api_key", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        """Coerce empty strings to None so unpopulated .env entries behave as unset."""
+        if v == "" or (isinstance(v, SecretStr) and v.get_secret_value() == ""):
+            return None
+        return v
+
     def model_post_init(self, __context: Any) -> None:
         """Validate provider credentials after standard Pydantic validation."""
         super().model_post_init(__context)
@@ -73,6 +83,9 @@ class Settings(BaseSettings):
         elif self.llm_provider == "groq":
             if not self.groq_api_key or not self.groq_api_key.get_secret_value().strip():
                 raise ConfigError("GROQ_API_KEY is required when llm_provider='groq'")
+        elif self.llm_provider == "gemini":
+            if not self.gemini_api_key or not self.gemini_api_key.get_secret_value().strip():
+                raise ConfigError("GEMINI_API_KEY is required when llm_provider='gemini'")
 
 
 @lru_cache()

@@ -6,6 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from src.errors import AgentError
 from src.logging_setup import get_logger
@@ -55,7 +56,7 @@ def run_structured(
 
     # Step 1: Attempt direct with_structured_output
     try:
-        if isinstance(llm, ChatGroq):
+        if isinstance(llm, (ChatGroq, ChatGoogleGenerativeAI)):
             structured_llm = llm.with_structured_output(schema, method="json_schema")
         else:
             structured_llm = llm.with_structured_output(schema)

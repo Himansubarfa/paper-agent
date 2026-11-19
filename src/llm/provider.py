@@ -43,6 +43,15 @@ def get_llm(settings: Optional[Settings] = None) -> BaseChatModel:
             temperature=settings.llm_temperature,
             timeout=settings.llm_timeout_seconds,
         )
+    elif settings.llm_provider == "gemini":
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        api_key = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+        return ChatGoogleGenerativeAI(
+            model=settings.gemini_model,
+            google_api_key=api_key,
+            temperature=settings.llm_temperature,
+            timeout=settings.llm_timeout_seconds,
+        )
     elif settings.llm_provider == "ollama":
         from langchain_ollama import ChatOllama
         return ChatOllama(
@@ -89,6 +98,24 @@ def embedder_slug(settings: Optional[Settings] = None) -> str:
     return f"{settings.embedding_provider}-unknown"
 
 
+def get_active_model_name(settings: Optional[Settings] = None) -> str:
+    """Return the active model name based on the configured LLM provider."""
+    if settings is None:
+        settings = get_settings()
+
+    if settings.llm_provider == "ollama":
+        return settings.ollama_model
+    elif settings.llm_provider == "gemini":
+        return settings.gemini_model
+    elif settings.llm_provider == "groq":
+        return settings.groq_model
+    elif settings.llm_provider == "openai":
+        return settings.openai_model
+    elif settings.llm_provider == "anthropic":
+        return settings.anthropic_model
+    return "Unknown"
+
+
 def check_provider(settings: Optional[Settings] = None) -> tuple[bool, str]:
     """Check connectivity or credential readiness for the configured LLM provider.
 
@@ -114,7 +141,7 @@ def check_provider(settings: Optional[Settings] = None) -> tuple[bool, str]:
                 False,
                 f"Ollama is unreachable at {url}. Start it with 'ollama serve'. Error: {exc}",
             )
-    elif settings.llm_provider in ("openai", "anthropic"):
+    elif settings.llm_provider in ("openai", "anthropic", "gemini"):
         return (True, "")
     elif settings.llm_provider == "groq":
         import requests

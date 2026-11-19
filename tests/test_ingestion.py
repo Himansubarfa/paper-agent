@@ -101,3 +101,32 @@ def test_build_chunks_ids_and_boundaries() -> None:
         elif chunk.section_id == "s2":
             assert "Paragraph 1" not in chunk.text
             assert chunk.section_heading == "Method"
+
+
+def test_load_pdf_extracts_images_to_upload_directory() -> None:
+    """Verify PyMuPDF extracts embedded images to data/uploads/<doc_id>/images/."""
+    from pathlib import Path
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((50, 50), "Document with figures and experimental results.")
+
+    # Create an empty pixmap image (100x100 RGB) and insert into page
+    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 100, 100), False)
+    pix.clear_with(200)
+    img_rect = pymupdf.Rect(100, 100, 200, 200)
+    page.insert_image(img_rect, pixmap=pix)
+
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    pages, doc_id = load_pdf(pdf_bytes, "image_test.pdf", max_pages=5)
+    assert len(pages) == 1
+    assert len(doc_id) == 16
+
+    img_dir = Path("data/uploads") / doc_id / "images"
+    assert img_dir.is_dir()
+    extracted = list(img_dir.glob("page_1_img_*.*"))
+    assert len(extracted) >= 1
+

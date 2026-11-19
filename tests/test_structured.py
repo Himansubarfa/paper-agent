@@ -135,3 +135,29 @@ def test_run_structured_non_groq_uses_default_mode():
     mock_llm.with_structured_output.assert_called_once_with(SectionSummary)
     assert result == expected
 
+
+def test_run_structured_gemini_uses_json_schema_mode():
+    """Verify ChatGoogleGenerativeAI instances use method='json_schema'."""
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from unittest.mock import MagicMock
+    from langchain_core.runnables import Runnable
+    from src.llm.structured import run_structured
+    from src.models.schemas import SectionSummary
+    from langchain_core.prompts import ChatPromptTemplate
+
+    mock_llm = MagicMock(spec=ChatGoogleGenerativeAI)
+    mock_structured_llm = MagicMock(spec=Runnable)
+    mock_llm.with_structured_output.return_value = mock_structured_llm
+
+    expected = SectionSummary(section="Intro", summary="S", key_points=["k1"])
+    mock_structured_llm.invoke.return_value = expected
+
+    prompt = ChatPromptTemplate.from_messages([("human", "{text}")])
+    result = run_structured({"text": "input"}, prompt, SectionSummary, mock_llm)
+
+    mock_llm.with_structured_output.assert_called_once_with(
+        SectionSummary, method="json_schema"
+    )
+    assert result == expected
+
+

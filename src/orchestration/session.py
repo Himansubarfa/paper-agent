@@ -40,6 +40,7 @@ class SessionState(BaseModel):
     viva_state: VivaState = VivaState.IDLE
     viva_index: int = 0
     viva_report: Optional[VivaReport] = None
+    slide_theme: Optional[str] = "Minimalist Tech"
 
 
 def get_session(container: Optional[dict[str, Any]] = None) -> SessionState:

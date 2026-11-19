@@ -1,7 +1,8 @@
-"""PDF document loader and text extractor using PyMuPDF and pymupdf4llm."""
+"""PDF document loader, image extractor, and text extractor using PyMuPDF and pymupdf4llm."""
 
 import hashlib
 from collections import Counter
+from pathlib import Path
 import pymupdf
 import pymupdf4llm
 
@@ -13,7 +14,7 @@ logger = get_logger(__name__)
 
 
 def load_pdf(data: bytes, filename: str, max_pages: int) -> tuple[list[Page], str]:
-    """Load a PDF from bytes, validate it, and extract pages as markdown text.
+    """Load a PDF from bytes, validate it, extract images, and extract pages as markdown text.
 
     Args:
         data: Raw PDF file bytes.
@@ -49,6 +50,28 @@ def load_pdf(data: bytes, filename: str, max_pages: int) -> tuple[list[Page], st
             raise IngestionError(
                 f"PDF '{filename}' has {n_pages} pages, which exceeds maximum of {max_pages}."
             )
+
+        # Extract images from PDF pages using PyMuPDF (fitz) (Task 3)
+        image_dir = Path("data/uploads") / doc_id / "images"
+        image_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            for page_idx in range(len(doc)):
+                page = doc[page_idx]
+                image_list = page.get_images(full=True)
+                for img_idx, img_info in enumerate(image_list):
+                    xref = img_info[0]
+                    base_image = doc.extract_image(xref)
+                    image_bytes = base_image.get("image")
+                    image_ext = base_image.get("ext", "png")
+                    width = base_image.get("width", 0)
+                    height = base_image.get("height", 0)
+                    # Filter out tiny icon-sized artifacts or 1x1 masks
+                    if image_bytes and (width >= 40 or height >= 40 or len(image_list) == 1):
+                        img_path = image_dir / f"page_{page_idx + 1}_img_{img_idx + 1}.{image_ext}"
+                        with open(img_path, "wb") as f:
+                            f.write(image_bytes)
+        except Exception as img_exc:
+            logger.warning("Could not extract images from PDF '%s': %s", filename, img_exc)
 
         # Extract markdown per page using pymupdf4llm
         try:

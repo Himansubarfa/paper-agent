@@ -122,11 +122,13 @@ class Dispatcher:
                     session.summary = self.summarizer.run(session.doc)
                 if session.concepts is None:
                     session.concepts = self.concept_extractor.run(session.doc)
+                theme = getattr(session, "slide_theme", "Minimalist Tech") or "Minimalist Tech"
                 deck = self.slide_generator.run(
                     summary=session.summary,
                     concepts=session.concepts,
                     min_slides=self.settings.min_slides,
                     max_slides=self.settings.max_slides,
+                    theme=theme,
                 )
                 session.deck = deck
                 response = AgentResponse(

@@ -103,3 +103,30 @@ def test_groq_model_default(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.groq_model in ("llama-3.3-70b-versatile", "openai/gpt-oss-120b")
 
 
+def test_missing_gemini_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test missing GEMINI_API_KEY raises ConfigError when provider=gemini."""
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    get_settings.cache_clear()
+    with pytest.raises(ConfigError, match="GEMINI_API_KEY"):
+        get_settings()
+
+
+def test_valid_gemini_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test valid gemini configuration loads cleanly."""
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "mock-gemini-key")
+    get_settings.cache_clear()
+    settings = get_settings()
+    assert settings.llm_provider == "gemini"
+    assert settings.gemini_api_key is not None
+    assert settings.gemini_api_key.get_secret_value() == "mock-gemini-key"
+
+
+def test_gemini_model_default() -> None:
+    """Test gemini_model default is gemini-2.5-flash."""
+    settings = Settings(_env_file=None, llm_provider="ollama")
+    assert settings.gemini_model == "gemini-2.5-flash"
+
+
+

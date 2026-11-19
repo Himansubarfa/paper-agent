@@ -2,7 +2,7 @@
 
 import pytest
 from src.config import Settings, get_settings
-from src.llm.provider import check_provider, embedder_slug, get_llm
+from src.llm.provider import check_provider, embedder_slug, get_active_model_name, get_llm
 
 
 def test_get_llm_per_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -130,4 +130,37 @@ def test_check_provider_groq_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     ok, msg = check_provider(settings)
     assert ok is True
     assert msg == ""
+
+
+def test_get_llm_gemini(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test get_llm returns ChatGoogleGenerativeAI when llm_provider=gemini."""
+    from langchain_google_genai import ChatGoogleGenerativeAI
+
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "mock-gemini-key")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.5-flash")
+    get_settings.cache_clear()
+
+    llm = get_llm()
+    assert isinstance(llm, ChatGoogleGenerativeAI)
+    assert llm.model == "gemini-2.5-flash"
+
+
+def test_check_provider_gemini() -> None:
+    """Test check_provider returns (True, '') for gemini."""
+    settings = Settings(llm_provider="gemini", gemini_api_key="valid-key")
+    ok, msg = check_provider(settings)
+    assert ok is True
+    assert msg == ""
+
+
+def test_get_active_model_name() -> None:
+    """Test get_active_model_name dynamically resolves model string per provider."""
+    assert get_active_model_name(Settings(llm_provider="ollama", ollama_model="llama3:latest")) == "llama3:latest"
+    assert get_active_model_name(Settings(llm_provider="gemini", gemini_model="gemini-2.5-flash", gemini_api_key="k")) == "gemini-2.5-flash"
+    assert get_active_model_name(Settings(llm_provider="groq", groq_model="llama-3.3-70b-versatile", groq_api_key="k")) == "llama-3.3-70b-versatile"
+    assert get_active_model_name(Settings(llm_provider="openai", openai_model="gpt-4o", openai_api_key="k")) == "gpt-4o"
+    assert get_active_model_name(Settings(llm_provider="anthropic", anthropic_model="claude-3-7-sonnet", anthropic_api_key="k")) == "claude-3-7-sonnet"
+
+
 

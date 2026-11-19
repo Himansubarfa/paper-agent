@@ -15,6 +15,7 @@ from src.models.schemas import (
     Difficulty,
     EvaluationResult,
     ParsedDocument,
+    RubricScore,
     VivaQuestion,
     VivaQuestionSet,
     VivaReport,
@@ -172,6 +173,30 @@ class VivaAgent:
         Returns:
             EvaluationResult containing rubric scores, feedback, missing points, and follow-up.
         """
+        # Short-circuit for MCQ: instant Python evaluation, no LLM call
+        if question.question_type == "mcq":
+            correct = (
+                question.correct_option is not None
+                and user_answer.strip().lower() == question.correct_option.strip().lower()
+            )
+            if correct:
+                return EvaluationResult(
+                    scores=RubricScore(correctness=5, completeness=5, clarity=5),
+                    feedback="Correct! ✅",
+                    missing_points=[],
+                    needs_followup=False,
+                    followup_question=None,
+                )
+            else:
+                correct_ans = question.correct_option or "N/A"
+                return EvaluationResult(
+                    scores=RubricScore(correctness=1, completeness=1, clarity=1),
+                    feedback=f"Incorrect. The correct answer was: **{correct_ans}**",
+                    missing_points=[f"The correct answer is: {correct_ans}"],
+                    needs_followup=False,
+                    followup_question=None,
+                )
+
         context_str = wrap_context(context_chunks)
 
         eval_result = run_structured(

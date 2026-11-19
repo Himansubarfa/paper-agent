@@ -93,6 +93,9 @@ class VivaQuestion(BaseModel):
     model_answer: str
     evidence_chunk_ids: list[str]
     examiner_intent: str
+    question_type: Literal["mcq", "written"] = "written"
+    options: list[str] = []
+    correct_option: str | None = None
 
 class VivaQuestionSet(BaseModel):
     questions: list[VivaQuestion]
